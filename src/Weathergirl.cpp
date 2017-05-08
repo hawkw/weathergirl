@@ -18,8 +18,10 @@
 #include <DHT.h>
 #include <DHT_U.h>
 
-const int DHT_PIN = 13
-        , DHT_TYPE = DHT11;
+const int DHT_PIN  = 13
+        , DHT_TYPE = DHT11
+        , TEMP_MIN = 32
+        , TEMP_MAX = 122;
 
 CommonCathodeLed<11,10, 9> rgb_led = CommonCathodeLed<11, 10, 9>();
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -47,10 +49,16 @@ void loop() {
       return;
     }
 
+    int hue = map((long)f, TEMP_MIN, TEMP_MAX, 0, 255);
+    // set the LED color
+    rgb_led.color = HSVColor(hue);
+    rgb_led.show();
+
     // Compute heat index in Fahrenheit (the default)
     float hif = dht.computeHeatIndex(f, h);
     // Compute heat index in Celsius (isFahreheit = false)
     float hic = dht.computeHeatIndex(t, h, false);
+
 
     Serial.print("Humidity: ");
     Serial.print(h);
