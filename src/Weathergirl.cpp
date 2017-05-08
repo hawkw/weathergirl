@@ -36,9 +36,9 @@ byte degree[8] = {
 
 
 // initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(12, 8, 5, 4, 3, 2);
+LiquidCrystal lcd(9, 8, 4, 5, 6, 7);
 
-const int DHT_PIN  = 13
+const int DHT_PIN  = 3
         , DHT_TYPE = DHT11
         , TEMP_MIN = 32
         , TEMP_MAX = 122;
@@ -81,10 +81,10 @@ void loop() {
       return;
     }
 
-    int hue = map((long)f, TEMP_MIN, TEMP_MAX, 0, 255);
-    // set the LED color
-    rgb_led.color = HSVColor(hue);
-    rgb_led.show();
+    // int hue = map((long)f, TEMP_MIN, TEMP_MAX, 0, 255);
+    // // set the LED color
+    // rgb_led.color = HSVColor(hue);
+    // rgb_led.show();
 
     // Compute heat index in Fahrenheit (the default)
     float hif = dht.computeHeatIndex(f, h);
@@ -109,10 +109,10 @@ void loop() {
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("temp: ");
-    lcd.print(round(t));
+    lcd.print((int)round(t), 10);
     lcd.write(byte(0));
     lcd.print("C ");
-    lcd.print(round(f));
+    lcd.print((int)round(f), 10);
     lcd.write(byte(0));
     lcd.print("F");
     lcd.setCursor(0,1);
