@@ -18,6 +18,26 @@
 #include <DHT.h>
 #include <DHT_U.h>
 
+// liquid-crystal display
+#include <LiquidCrystal.h>
+#include <math.h>
+
+// Degree symbol bitmap
+byte degree[8] = {
+  B01000,
+  B10100,
+  B01000,
+  B00000,
+  B00000,
+  B00000,
+  B00000,
+  B00000,
+};
+
+
+// initialize the library with the numbers of the interface pins
+LiquidCrystal lcd(12, 8, 5, 4, 3, 2);
+
 const int DHT_PIN  = 13
         , DHT_TYPE = DHT11
         , TEMP_MIN = 32
@@ -27,7 +47,17 @@ CommonCathodeLed<11,10, 9> rgb_led = CommonCathodeLed<11, 10, 9>();
 DHT dht(DHT_PIN, DHT_TYPE);
 
 void setup() {
+    // create the degree symbol bitmap
+    lcd.createChar(0, degree);
+    // set up the LCD's number of columns and rows
+    lcd.begin(16, 2);
+    // Print a message to the LCD.
+    lcd.print("WeatherGirl <3");
+
     Serial.begin(9600);
+    // Print a message to the LCD.
+    Serial.print("WeatherGirl started! <3");
+
     dht.begin();
 }
 
@@ -46,6 +76,8 @@ void loop() {
     // Check if any reads failed and exit early (to try again).
     if (isnan(h) || isnan(t) || isnan(f)) {
       Serial.println("Failed to read from DHT sensor!");
+      lcd.clear();
+      lcd.print("DHT sensor error!");
       return;
     }
 
@@ -73,4 +105,18 @@ void loop() {
     Serial.print(" °C ");
     Serial.print(hif);
     Serial.println(" °F");
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("temp: ");
+    lcd.print(round(t));
+    lcd.write(byte(0));
+    lcd.print("C ");
+    lcd.print(round(f));
+    lcd.write(byte(0));
+    lcd.print("F");
+    lcd.setCursor(0,1);
+    lcd.print("humidity: ");
+    lcd.print(h);
+    lcd.print("%");
 }
