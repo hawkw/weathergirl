@@ -5,6 +5,14 @@
 
     A cute little DIY weather station (with fancy lighting!)
 
+    Circuit:
+    * Ethernet shield attached to pins 10, 11, 12, 13
+    * DHT11 data wire connected to pin 3
+    * LCD:
+        - RS pin connected to pin 9
+        - E pin connected to pin 8
+        - D4, D5, D6, and D7 connected to pins 4, 5, 6, and 7
+
  */
 
 #include <Arduino.h>
@@ -21,6 +29,23 @@
 // liquid-crystal display
 #include <LiquidCrystal.h>
 #include <math.h>
+
+#include <SPI.h>
+#include <Ethernet.h>
+
+// Enter a MAC address and IP address for your controller below.
+// The IP address will be dependent on your local network:
+const byte mac[] = {
+  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+};
+
+IPAddress ip(192, 168, 1, 177);
+
+// Initialize the Ethernet server library
+// with the IP address and port you want to use
+// (port 80 is default for HTTP):
+EthernetServer server(80);
+
 
 // Degree symbol bitmap
 byte degree[8] = {
@@ -43,10 +68,19 @@ const int DHT_PIN  = 3
         , TEMP_MIN = 32
         , TEMP_MAX = 122;
 
+float h, t, f, hif, hic;
+
 CommonCathodeLed<11,10, 9> rgb_led = CommonCathodeLed<11, 10, 9>();
 DHT dht(DHT_PIN, DHT_TYPE);
 
 void setup() {
+    // start the SPI library:
+    SPI.begin();
+
+    // start the Ethernet connection and the server:
+    Ethernet.begin(mac, ip);
+    server.begin();
+
     // create the degree symbol bitmap
     lcd.createChar(0, degree);
     // set up the LCD's number of columns and rows
