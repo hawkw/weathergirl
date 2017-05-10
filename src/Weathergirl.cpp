@@ -33,6 +33,7 @@
 #include <SPI.h>
 #include <Ethernet.h>
 
+
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
 byte mac[] = {
@@ -72,6 +73,64 @@ float h, t, f, hif, hic;
 
 CommonCathodeLed<11,10, 9> rgb_led = CommonCathodeLed<11, 10, 9>();
 DHT dht(DHT_PIN, DHT_TYPE);
+
+class State {
+private:
+    float h, t, f, hif, hic;
+public:
+
+    /* Construct a new State from humidity, Celcius, and Fahrenheit */
+    State(float h, float t, float f)
+        : h { h }
+        , t { t }
+        , f { f }
+        , hif { dht.computeHeatIndex(f, h) }
+        , hic { dht.computeHeatIndex(t, h, true) }
+        { }
+
+    State(DHT d)
+        : h { d.readHumidity() }
+        , t { d.readTemperature() }
+        , f { d.readTemperature(true) }
+        , hif { d.computeHeatIndex(f, h) }
+        , hic { d.computeHeatIndex(t, h, true) }
+        { }
+
+    void lcd_output(LiquidCrystal l) {
+        l.clear();
+        l.setCursor(0, 0);
+        l.print("temp: ");
+        l.print((int)round(this->t), 10);
+        l.write(byte(0));
+        l.print("C ");
+        l.print((int)round(this->f), 10);
+        l.write(byte(0));
+        l.print("F");
+        l.setCursor(0,1);
+        l.print("humidity: ");
+        l.print(this->h);
+        l.print("%");
+    }
+
+    void serial_output(void) {
+        Serial.print("Humidity: ");
+        Serial.print(this->h);
+        Serial.print(" %\t");
+        Serial.print("Temperature: ");
+        Serial.print(this->t);
+        Serial.print(" °C ");
+        Serial.print(this->f);
+        Serial.print(" °F\t");
+        Serial.print("Heat index: ");
+        Serial.print(this->hic);
+        Serial.print(" °C ");
+        Serial.print(this->hif);
+        Serial.println(" °F");
+    }
+
+};
+
+State state = State(0,0,0);
 
 void setup(void) {
     // start the SPI library:
@@ -122,41 +181,13 @@ void measure(void) {
 
 }
 
-void serial_output(void) {
-    // TODO: refactor this to a class method
-    Serial.print("Humidity: ");
-    Serial.print(h);
-    Serial.print(" %\t");
-    Serial.print("Temperature: ");
-    Serial.print(t);
-    Serial.print(" °C ");
-    Serial.print(f);
-    Serial.print(" °F\t");
-    Serial.print("Heat index: ");
-    Serial.print(hic);
-    Serial.print(" °C ");
-    Serial.print(hif);
-    Serial.println(" °F");
 
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("temp: ");
-    lcd.print((int)round(t), 10);
-    lcd.write(byte(0));
-    lcd.print("C ");
-    lcd.print((int)round(f), 10);
-    lcd.write(byte(0));
-    lcd.print("F");
-    lcd.setCursor(0,1);
-    lcd.print("humidity: ");
-    lcd.print(h);
-    lcd.print("%");
-}
 
 void loop(void) {
     // Wait a few seconds between measurements.
     delay(2000);
-    measure();
-    serial_output();
+    state = State(dht);
+    state.lcd_output(lcd);
+    state.serial_output();
 
 }
