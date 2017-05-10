@@ -159,6 +159,17 @@ public:
         client.println("<br />");
     }
 
+    void csv_output(File dataFile) {
+        // if the file is available, write to it:
+      if (dataFile) {
+        String dataString = String(this->time)
+                          + "," + String(this->t)
+                          + "," + String(this->h);
+        dataFile.println(dataString);
+        dataFile.close();
+      }
+    }
+
 };
 
 State state = State(0,0,0);
@@ -271,6 +282,14 @@ void loop(void) {
         state = State(dht);
         state.lcd_output(lcd);
         state.serial_output();
+
+        // if a SD card was found, log data
+        if (sd) {
+            File dataFile = SD.open("weather.csv", FILE_WRITE);
+            state.csv_output(dataFile);
+            dataFile.close();
+        }
+
     }
     serve_ethernet();
 
