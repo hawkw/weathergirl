@@ -68,8 +68,8 @@ const int DHT_PIN  = 3
         , DHT_TYPE = DHT11
         , TEMP_MIN = 32
         , TEMP_MAX = 122;
-
-float h, t, f, hif, hic;
+//
+// float h, t, f, hif, hic;
 
 CommonCathodeLed<11,10, 9> rgb_led = CommonCathodeLed<11, 10, 9>();
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -77,6 +77,7 @@ DHT dht(DHT_PIN, DHT_TYPE);
 class State {
 private:
     float h, t, f, hif, hic;
+    unsigned long time;
 public:
 
     /* Construct a new State from humidity, Celcius, and Fahrenheit */
@@ -86,6 +87,7 @@ public:
         , f { f }
         , hif { dht.computeHeatIndex(f, h) }
         , hic { dht.computeHeatIndex(t, h, true) }
+        , time { millis() }
         { }
 
     State(DHT d)
@@ -94,7 +96,12 @@ public:
         , f { d.readTemperature(true) }
         , hif { d.computeHeatIndex(f, h) }
         , hic { d.computeHeatIndex(t, h, true) }
+        , time { millis() }
         { }
+
+    unsigned long timestamp(void) {
+        return this->time;
+    }
 
     void lcd_output(LiquidCrystal l) {
         l.clear();
@@ -128,6 +135,27 @@ public:
         Serial.println(" °F");
     }
 
+    void html_output(EthernetClient client) {
+
+        // print the current readings, in HTML format:
+        client.print("Temperature: ");
+        client.print(this->t);
+        client.print(" °C / ");
+        client.print(this->f);
+        client.print(" °F ");
+        client.println("<br />");
+
+        client.print("Heat index: ");
+        client.print(this->hic);
+        client.print(" °C / ");
+        client.print(this->hif);
+        client.print(" °F ");
+        client.println("<br />");
+
+        client.print("Humidity: " + String(h) + " %");
+        client.println("<br />");
+    }
+
 };
 
 State state = State(0,0,0);
@@ -154,40 +182,78 @@ void setup(void) {
     dht.begin();
 }
 
-void measure(void) {
-    // TODO: refactor this to a class method
-    // Reading temperature or humidity takes about 250 milliseconds!
-    // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-    float h_temp = dht.readHumidity()
-          // Read temperature as Celsius (the default)
-        , t_temp = dht.readTemperature()
-          // Read temperature as Fahrenheit (isFahrenheit = true)
-        , f_temp = dht.readTemperature(true)
-        ;
-
-    // Check if any reads failed and exit early (to try again).
-    if (isnan(h_temp) || isnan(t_temp) || isnan(f_temp)) {
-      Serial.println("Failed to read from DHT sensor!");
-      lcd.clear();
-      lcd.print("DHT sensor error!");
-      return;
-  } else {
-      h = h_temp;
-      t = t_temp;
-      f = f_temp;
-      hif = dht.computeHeatIndex(f, h);
-      hic = dht.computeHeatIndex(t, h, false);
-  }
-
-}
+// void measure(void) {
+//     // TODO: refactor this to a class method
+//     // Reading temperature or humidity takes about 250 milliseconds!
+//     // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+//     float h_temp = dht.readHumidity()
+//           // Read temperature as Celsius (the default)
+//         , t_temp = dht.readTemperature()
+//           // Read temperature as Fahrenheit (isFahrenheit = true)
+//         , f_temp = dht.readTemperature(true)
+//         ;
+//
+//     // Check if any reads failed and exit early (to try again).
+//     if (isnan(h_temp) || isnan(t_temp) || isnan(f_temp)) {
+//       Serial.println("Failed to read from DHT sensor!");
+//       lcd.clear();
+//       lcd.print("DHT sensor error!");
+//       return;
+//   } else {
+//       h = h_temp;
+//       t = t_temp;
+//       f = f_temp;
+//       hif = dht.computeHeatIndex(f, h);
+//       hic = dht.computeHeatIndex(t, h, false);
+//   }
+//
+// }
 
 
 
 void loop(void) {
     // Wait a few seconds between measurements.
-    delay(2000);
-    state = State(dht);
-    state.lcd_output(lcd);
-    state.serial_output();
+    if (millis() - state.timestamp() > 2000) {
+        state = State(dht);
+        state.lcd_output(lcd);
+        state.serial_output();
+    }
 
+}
+
+void serve_ethernet(void) {
+    // listen for incoming clients
+  EthernetClient client = server.available();
+  if (client) {
+    Serial.println("Got a client");
+    // an http request ends with a blank line
+    boolean currentLineIsBlank = true;
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        // if you've gotten to the end of the line (received a newline
+        // character) and the line is blank, the http request has ended,
+        // so you can send a reply
+        if (c == '\n' && currentLineIsBlank) {
+            // send a standard http response header
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-Type: text/html");
+            client.println();
+            state.html_output(client);
+            break;
+        }
+        if (c == '\n') {
+          // you're starting a new line
+          currentLineIsBlank = true;
+        } else if (c != '\r') {
+          // you've gotten a character on the current line
+          currentLineIsBlank = false;
+        }
+      }
+    }
+    // give the web browser time to receive the data
+    delay(1);
+    // close the connection:
+    client.stop();
+  }
 }
