@@ -33,6 +33,8 @@
 #include <SPI.h>
 #include <Ethernet.h>
 
+#include <SD.h>
+
 
 // Enter a MAC address and IP address for your controller below.
 // The IP address will be dependent on your local network:
@@ -67,10 +69,11 @@ LiquidCrystal lcd(9, 8, 4, 5, 6, 7);
 const int DHT_PIN  = 3
         , DHT_TYPE = DHT11
         , TEMP_MIN = 32
-        , TEMP_MAX = 122;
+        , TEMP_MAX = 122
+        , CHIP_SELECT = 2;
 //
 // float h, t, f, hif, hic;
-
+bool sd = false;
 CommonCathodeLed<11,10, 9> rgb_led = CommonCathodeLed<11, 10, 9>();
 DHT dht(DHT_PIN, DHT_TYPE);
 
@@ -178,6 +181,21 @@ void setup(void) {
     Serial.begin(9600);
     // Print a message to the LCD.
     Serial.print("WeatherGirl started! <3");
+    while (!Serial) {
+      ; // wait for serial port to connect. Needed for native USB port only
+    }
+
+
+    Serial.print("Initializing SD card...");
+
+    // see if the card is present and can be initialized:
+    if (!SD.begin(CHIP_SELECT)) {
+        Serial.println("Card failed, or not present");
+        lcd.print("no SD card");
+    } else {
+        Serial.println("card initialized.");
+        sd = true;
+    }
 
     dht.begin();
 }
@@ -208,18 +226,6 @@ void setup(void) {
 //   }
 //
 // }
-
-
-
-void loop(void) {
-    // Wait a few seconds between measurements.
-    if (millis() - state.timestamp() > 2000) {
-        state = State(dht);
-        state.lcd_output(lcd);
-        state.serial_output();
-    }
-
-}
 
 void serve_ethernet(void) {
     // listen for incoming clients
@@ -256,4 +262,16 @@ void serve_ethernet(void) {
     // close the connection:
     client.stop();
   }
+}
+
+
+void loop(void) {
+    // Wait a few seconds between measurements.
+    if (millis() - state.timestamp() > 2000) {
+        state = State(dht);
+        state.lcd_output(lcd);
+        state.serial_output();
+    }
+    serve_ethernet();
+
 }
